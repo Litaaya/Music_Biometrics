@@ -1,413 +1,457 @@
-# Music Biometrics System Pipeline
+# Music Biometrics Data Platform
 
-## Pipeline Structure:
+An end-to-end data engineering project that processes simulated biometric events, enriches them with user and music metadata, stores historical data in an Apache Iceberg lakehouse, and serves real-time and historical insights through an ASP.NET Core backend.
 
-```mermaid
-graph TD
-    classDef source fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef ingest fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef process fill:#fbb,stroke:#333,stroke-width:2px;
-    classDef store fill:#fbf,stroke:#333,stroke-width:2px;
-    classDef serving fill:#d7ccc8,stroke:#5d4037,stroke-width:2px;
-    classDef view fill:#bfb,stroke:#333,stroke-width:2px;
+This project is designed as a Fresher Data Engineer portfolio project. The goal is to demonstrate a complete data flow using streaming, lakehouse storage, batch transformation, orchestration, data quality, and application serving.
 
-    subgraph P1 [Phase 1: Data Source Layer]
-        A1[Human Biometrics Stream<br>Smartwatch Producer App]:::source
-        A2[Human Profile Metadata<br>Demographics & Cultural Context]:::source
-        A3[Music Feature Metadata]:::source
-    end
+---
 
-    subgraph P2 [Phase 2: Streaming Ingestion & Data Contracts]
-        B1[Apache Kafka<br>biometrics-raw Topic]:::ingest
-        B2[Confluent Schema Registry<br>Avro Contracts & Compatibility]:::ingest
-        B3[Apache Kafka<br>biometrics-dlq Topic]:::ingest
+## 1. Project Goals
 
-        B4[Apache Kafka<br>user-baseline Compacted Topic]:::ingest
-        B5[Apache Kafka<br>realtime-metrics Topic]:::ingest
-        B6[Apache Kafka<br>alert-events Topic]:::ingest
-    end
+The platform will:
 
-    subgraph P3 [Phase 3: Stream & Batch Processing]
-        C0[Bootstrap / Batch Metadata Loader<br>Iceberg Writer]:::process
+1. Generate simulated biometric events.
+2. Ingest streaming events through Apache Kafka.
+3. Process and enrich events with PySpark Structured Streaming.
+4. Store historical data in Apache Iceberg tables on MinIO.
+5. Build analytical models and user baselines with dbt and DuckDB.
+6. Publish updated baselines back to Kafka.
+7. Serve live and historical data through ASP.NET Core.
+8. Orchestrate batch workflows with Apache Airflow.
 
-        C1[PySpark Structured Streaming Engine]:::process
+> This is a portfolio project and does not provide medical diagnosis.
 
-        C2[(RocksDB-backed<br>Streaming State Store)]:::process
-        C2_CP[(Durable Streaming Checkpoints<br>MinIO / S3)]:::store
+---
 
-        subgraph C3 [Spark Streaming Job Internal Logic]
-            C3_1[1. Avro Deserialization<br>& Domain Validation]:::process
-            C3_2[2. Watermarking, Deduplication<br>& Event-Time Windowing]:::process
-            C3_3[3. Profile and Dynamic<br>Baseline Enrichment]:::process
-            C3_4[4. Streaming Feature Engineering<br>& Personalized Stress Deviation Scoring]:::process
+## 2. Data Sources
 
-            C3_1 --> C3_2
-            C3_2 --> C3_3
-            C3_3 --> C3_4
-        end
+The project starts with three base datasets.
 
-        C5[Baseline Publisher Job<br>Publish Latest State by user_id]:::process
-    end
+### Biometric Events
 
-    subgraph P4 [Phase 4: Lakehouse Storage & Analytical Processing]
+Simulated real-time smartwatch data.
 
-        subgraph Lakehouse_Core [Apache Iceberg Lakehouse Core]
-            D1[Apache Iceberg Tables<br>ACID Snapshots - Time Travel - Schema Evolution]:::store
-            D1_Cat[Iceberg REST Catalog<br>Namespaces & Atomic Metadata Commits]:::store
-            D1_S3[(MinIO Object Storage<br>Data, Manifest & Metadata Files)]:::store
+```text
 
-            D1 -.->|Catalog operations| D1_Cat
-            D1 -.->|Physical table files| D1_S3
-            D1_Cat -.->|Current metadata location| D1_S3
-        end
-
-        D3A[DuckDB<br>Embedded dbt Execution Engine]:::store
-        D4[dbt<br>SQL Transformation & Data Tests]:::store
-    end
-
-    subgraph P5 [Phase 5: Application Serving & Notification]
-        E0[ASP.NET Core Minimal API<br>Kafka Consumers - SignalR - Query API]:::serving
-        E3[DuckDB.NET<br>Embedded Analytical Query Engine]:::serving
-        E1[Real-time Wellness Dashboard]:::view
-        E2[Physiological Anomaly Notification<br>Slack - Email - Push]:::view
-    end
-
-    %% Static Metadata Bootstrap
-    A2 -->|1. Load profile metadata| C0
-    A3 -->|2. Load music feature metadata| C0
-    C0 -->|3. Create and populate Iceberg tables| D1
-
-    %% Schema Control Plane
-    A1 -.->|4a. Register or retrieve Avro schema| B2
-    C1 -.->|4b. Retrieve schema for deserialization| B2
-    E0 -.->|4c. Retrieve schemas for output topics| B2
-
-    %% Raw Biometrics Ingestion    
-    A1 -->|5. Publish Avro events| B1
-
-    A1 -->|5a. Publish producer error envelope<br>when serialization fails| B3
-
-    B1 -->|6. Consume biometric events| C1
-    C1 -->|7. Execute streaming pipeline| C3_1
-
-    C3_1 -->|7a. Route malformed or invalid records| B3
-
-    %% Streaming State
-    C3_2 <-->|8a. Maintain window and deduplication state| C2
-    C3_3 <-->|8b. Maintain latest baseline state by user_id| C2
-    C2 -->|8c. Persist recoverable state versions| C2_CP
-
-    %% Context Enrichment
-    D1 -->|9a. Read profile and music reference tables| C3_3
-    B4 -->|9b. Consume keyed baseline update events| C3_3
-
-    %% Iceberg Streaming Output
-    C3_4 -->|10. Append scored biometric events<br>through the Iceberg Spark sink| D1
-
-    %% Real-time Serving Topics
-    C3_4 -->|11a. Publish live derived metrics| B5
-    C3_4 -->|11b. Publish elevated anomaly events| B6
-
-    B5 -->|12a. Consume live metrics| E0
-    B6 -->|12b. Consume notification events| E0
-
-    E0 -->|13a. Push user-scoped SignalR messages| E1
-    E0 -->|13b. Dispatch notifications| E2
-
-    %% Batch Analytics and Baseline Updates
-    D4 -->|14. Compile models and execute SQL| D3A
-    D3A -->|15. Read and write Iceberg analytical tables| D1
-
-    D1 -->|16. Read latest user baseline table| C5
-    C5 -->|17. Publish latest baseline keyed by user_id| B4
-
-    %% Historical Query Path
-    E1 -->|18. Request historical trends over HTTPS| E0
-    E0 -->|19. Execute analytical query| E3
-    E3 -->|20. Read Iceberg tables through REST Catalog| D1
-    E0 -->|21. Return aggregated trend response| E1
 ```
 
-## Orchestrator Structure
+### User Profile Metadata
 
-Airflow orchestrates finite batch workflows only. The long-running Spark Structured Streaming application operates independently of Airflow.
+Static information used to enrich biometric events.
 
-### Orchestration Overview
+```text
+
+```
+
+### Music Metadata
+
+Static or batch-generated track information.
+
+```text
+
+```
+
+Music feature extraction with Librosa can be added after the core pipeline is complete.
+
+---
+
+## 3. Technology Stack
+
+| Layer               | Technologies                         |
+|:--------------------|:-------------------------------------|
+| Infrastructure      | Docker, Docker Compose               |
+| Streaming ingestion | Apache Kafka                         |
+| Data contracts      | Avro, Confluent Schema Registry      |
+| Stream processing   | PySpark Structured Streaming         |
+| Streaming state     | RocksDB-backed state store           |
+| Object storage      | MinIO                                |
+| Table format        | Apache Iceberg                       |
+| Catalog             | Iceberg REST Catalog                 |
+| Batch analytics     | DuckDB                               |
+| Data transformation | dbt                                  |
+| Orchestration       | Apache Airflow                       |
+| Backend             | ASP.NET Core Minimal API             |
+| Real-time delivery  | SignalR                              |
+| Testing             | Pytest, dbt tests, integration tests |
+
+---
+
+## 4. High-Level Data Flow
 
 ```mermaid
 graph LR
-    classDef dag fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
-    classDef infra fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
-    classDef kafka fill:#c5cae9,stroke:#283593,stroke-width:2px
+    A1["Biometric Producer"] --> B1["Kafka biometrics-raw"]
+    A2["User Profiles"] --> D1["Iceberg Tables on MinIO"]
+    A3["Music Metadata"] --> D1
 
-    subgraph AF["Apache Airflow"]
-        DAG1["System Bootstrap DAG"]:::dag
-        DAG2["Music Feature Extraction DAG"]:::dag
-        DAG3["Baseline Recalculation and Publish DAG"]:::dag
-        DAG4["Iceberg Maintenance DAG"]:::dag
-    end
+    B1 --> C1["PySpark Structured Streaming"]
+    C1 --> D1
+    C1 --> B2["Kafka realtime-metrics"]
+    C1 --> B3["Kafka alert-events"]
 
-    MINIO["MinIO Object Storage"]:::infra
-    CATALOG["Iceberg REST Catalog"]:::infra
-    ICEBERG["Apache Iceberg Tables"]:::infra
-    SCHEMA["Confluent Schema Registry"]:::kafka
-    KBASE["Kafka user-baseline Topic"]:::kafka
-    DBT["dbt and DuckDB"]:::infra
-    SPARK["Spark Batch and Spark SQL"]:::infra
-    AUDIT["Pipeline Audit Table"]:::infra
+    D1 --> E1["DuckDB and dbt"]
+    E1 --> D2["Analytical Tables and User Baselines"]
 
-    DAG1 --> MINIO
-    DAG1 --> CATALOG
-    DAG1 --> SCHEMA
-    DAG1 --> ICEBERG
+    D2 --> F1["Baseline Publisher"]
+    F1 --> B4["Kafka user-baseline"]
+    B4 --> C1
 
-    DAG2 --> MINIO
-    DAG2 --> SPARK
-    DAG2 --> ICEBERG
-    DAG2 --> AUDIT
+    B2 --> G1["ASP.NET Core"]
+    B3 --> G1
+    G1 --> H1["Dashboard and Notifications"]
 
-    DAG3 --> DBT
-    DAG3 --> ICEBERG
-    DAG3 --> KBASE
-    DAG3 --> AUDIT
+    D1 --> G2["DuckDB.NET"]
+    G2 --> G1
 
-    DAG4 --> SPARK
-    DAG4 --> CATALOG
-    DAG4 --> ICEBERG
-    DAG4 --> AUDIT
+    I1["Apache Airflow"] -.-> E1
+    I1 -.-> F1
+    I1 -.-> D1
 ```
 
-### DAG 1: System Bootstrap
+---
 
-**Schedule:** Manual, one-time initialization.
+## 5. Core Data Flow
 
-```mermaid
-graph TD
-    classDef task fill:#fff3e0,stroke:#ffb74d,stroke-width:1px
-    classDef quality fill:#dcedc8,stroke:#558b2f,stroke-width:2px
-
-    A["Check Infrastructure Health"]
-    B["Create MinIO Buckets and Prefixes"]
-    C["Create Iceberg Namespaces and Tables"]
-    D["Register Avro Schemas and Compatibility Rules"]
-    E["Generate Mock Human Profiles and Initial Baselines"]
-    F["Seed Initial Music Metadata"]
-    G["Validate Schemas, Row Counts and Null Rules"]:::quality
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-```
-
-Primary interactions:
-
-- MinIO: create buckets and storage prefixes.
-- Iceberg REST Catalog: create namespaces and tables.
-- Schema Registry: register Avro schemas.
-- Iceberg tables: seed profiles, baselines and music metadata.
-
-### DAG 2: Automated Music Feature Extraction
-
-**Schedule:** Periodic polling or event-triggered execution.
-
-```mermaid
-graph TD
-    classDef task fill:#fff3e0,stroke:#ffb74d,stroke-width:1px
-    classDef compute fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    classDef quality fill:#dcedc8,stroke:#558b2f,stroke-width:2px
-    classDef control fill:#eeeeee,stroke:#616161,stroke-width:2px
-
-    A["List New Audio Objects in MinIO"]
-    B{"New Audio Files Found?"}
-    C["Create Processing Manifest"]
-    D["Extract Audio Features with Librosa"]:::compute
-    E["Validate Feature Ranges and Required Fields"]:::quality
-    F["Write Valid Features to Iceberg Staging"]
-    G["Merge Staging Rows into Music Feature Table"]
-    H["Mark Source Objects as Processed"]
-    I["Skip Run"]:::control
-    J["Write Invalid Results to Rejected Records Table"]:::quality
-
-    A --> B
-    B -->|Yes| C
-    B -->|No| I
-    C --> D
-    D --> E
-    E -->|Valid| F
-    E -->|Invalid| J
-    F --> G
-    G --> H
-```
-
-Idempotency key:
+### Static Data Loading
 
 ```text
-object_key + object_etag + feature_version
+User Profiles ─┐
+               ├─> Bootstrap Loader ─> Iceberg Tables on MinIO
+Music Metadata ┘
 ```
 
-The processing manifest should store the object key, ETag, processing status, feature version, timestamps and error details.
-
-### DAG 3: Daily Baseline Recalculation and Publication
-
-**Schedule:** Daily, after the previous day's biometric partitions are complete.
-
-```mermaid
-graph TD
-    classDef task fill:#fff3e0,stroke:#ffb74d,stroke-width:1px
-    classDef compute fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    classDef quality fill:#dcedc8,stroke:#558b2f,stroke-width:2px
-
-    A["Check Lakehouse and Catalog Health"]
-    B["Check Biometric Partitions and Source Freshness"]:::quality
-    C["Run dbt Staging Models"]
-    D["Recalculate User Baselines"]
-    E["Run dbt Data Tests"]:::quality
-    F["Validate New Iceberg Baseline Snapshot"]
-    G["Read Changed Baseline Rows"]
-    H["Publish Updates Keyed by user_id"]:::compute
-    I["Verify Kafka Counts, Keys and Schema Version"]:::quality
-    J["Record Published Snapshot and Audit Metadata"]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E -->|Passed| F
-    F --> G
-    G --> H
-    H --> I
-    I --> J
-```
-
-Data flow:
+### Real-Time Biometric Pipeline
 
 ```text
-Iceberg biometric tables
-    -> dbt models executed by DuckDB
-    -> Iceberg user baseline table
-    -> baseline publisher job
-    -> Kafka user-baseline compacted topic
-    -> Spark Structured Streaming enrichment
+Mock Smartwatch Producer
+    -> Avro
+    -> Kafka biometrics-raw
+    -> PySpark Structured Streaming
+    -> Validation and Enrichment
+    -> Iceberg scored_biometric_events
 ```
 
-The Kafka message key must be `user_id` so log compaction retains the latest baseline for each user.
+Spark will:
 
-### DAG 4: Iceberg Lakehouse Maintenance
+- Deserialize Avro records.
+- Validate required fields.
+- Route invalid records to a DLQ.
+- Remove duplicates.
+- Process event-time windows.
+- Enrich events with user and baseline data.
+- Calculate simple deviation metrics.
+- Write valid results to Iceberg.
 
-**Schedule:** Daily for high-volume streaming tables and weekly for smaller reference tables.
-
-```mermaid
-graph TD
-    classDef task fill:#fff3e0,stroke:#ffb74d,stroke-width:1px
-    classDef compute fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    classDef quality fill:#dcedc8,stroke:#558b2f,stroke-width:2px
-    classDef control fill:#eeeeee,stroke:#616161,stroke-width:2px
-
-    A["Collect File, Manifest and Snapshot Statistics"]
-    B{"Maintenance Required?"}
-    C["Compact Small Data Files"]:::compute
-    D["Rewrite Manifest Files"]:::compute
-    E["Expire Old Snapshots"]:::compute
-    F["Remove Orphan Files with Safe Retention"]:::compute
-    G["Recollect Statistics and Validate Current Snapshot"]:::quality
-    H["Skip Maintenance"]:::control
-
-    A --> B
-    B -->|Yes| C
-    B -->|No| H
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-```
-
-Maintenance operations are executed through Spark SQL or Spark batch jobs:
+### Lakehouse Storage
 
 ```text
-rewrite_data_files
-rewrite_manifests
-expire_snapshots
-remove_orphan_files
+Spark
+    -> Apache Iceberg Tables
+    -> MinIO Object Storage
 ```
 
-A safe retention window must be used before removing orphan files to avoid deleting files belonging to an active or recently failed writer.
+Iceberg manages schemas, snapshots, metadata, time travel, and atomic commits. MinIO stores Parquet, manifest, metadata, and checkpoint files.
 
+### Batch Analytics
 
-## Backend Structure:
-
-```mermaid
-graph LR
-    classDef ingest fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef process fill:#fbb,stroke:#333,stroke-width:2px;
-    classDef serving fill:#d7ccc8,stroke:#5d4037,stroke-width:2px;
-    classDef store fill:#fbf,stroke:#333,stroke-width:2px;
-    classDef view fill:#bfb,stroke:#333,stroke-width:2px;
-
-    subgraph Input [Kafka Event Bus]
-        B5[Kafka Topic<br>realtime-metrics]:::ingest
-        B6[Kafka Topic<br>alert-events]:::ingest
-        B7[Kafka Topic<br>alert-retry]:::ingest
-        SR[Schema Registry<br>Event Contracts]:::ingest
-    end
-
-    subgraph Backend [ASP.NET Core Minimal API]
-
-        subgraph Workers [Hosted Background Services]
-            W1[RealtimeMetricsConsumer<br>BackgroundService]:::process
-            W2[AlertEventsConsumer<br>BackgroundService]:::process
-        end
-
-        subgraph Realtime [Real-time Delivery]
-            L1[Validate, Map and Filter<br>by user_id]:::process
-            HUB[SignalR Hub<br>and IHubContext]:::serving
-        end
-
-        subgraph Notification [Notification Delivery]
-            L2[Notification Router<br>Idempotency & Retry Policy]:::process
-            DISP[External Provider Dispatcher]:::serving
-        end
-
-        subgraph QueryAPI [Historical Query API]
-            API[Minimal API Endpoint<br>GET /api/users/userId/trends]:::serving
-            DNET[DuckDB.NET<br>Embedded Query Engine]:::store
-        end
-
-        AUTH[Authentication & Authorization<br>JWT / User Claims]:::serving
-    end
-
-    subgraph Lakehouse [Iceberg Lakehouse]
-        CAT[Iceberg REST Catalog]:::store
-        S3[(MinIO<br>Iceberg Data & Metadata Files)]:::store
-    end
-
-    subgraph Output [Application Sinks]
-        UI[Web Wellness Dashboard]:::view
-        ALERTS[Slack - Email - Push Provider]:::view
-    end
-
-    B5 -->|1. Contracted metric events| W1
-    W1 -.->|Retrieve event schema| SR
-    W1 -->|2. Deserialize and validate| L1
-    L1 -->|3. Route by authenticated user_id| HUB
-    HUB -->|4. SignalR message| UI
-
-    B6 -->|5. Contracted anomaly events| W2
-    B7 -->|6. Retry previously failed delivery| W2
-    W2 -.->|Retrieve event schema| SR
-    W2 -->|7. Validate and deduplicate by event_id| L2
-    L2 -->|8. Select notification channel| DISP
-    DISP -->|9. HTTP API / SMTP| ALERTS
-    DISP -->|10. Transient delivery failure| B7
-
-    UI -->|11. HTTPS historical trend request| API
-    API -->|12. Execute parameterized analytical query| DNET
-    DNET -->|13a. Resolve table metadata| CAT
-    DNET -->|13b. Read Iceberg files| S3
-    API -->|14. Return aggregated response| UI
-
-    AUTH -.->|Authorize SignalR connection| HUB
-    AUTH -.->|Authorize REST endpoint| API
+```text
+Iceberg Tables
+    -> DuckDB
+    -> dbt Models and Tests
+    -> Daily Metrics
+    -> User Baselines
 ```
+
+dbt models:
+
+```text
+stg_biometric_events
+stg_user_profiles
+int_daily_user_metrics
+fct_daily_wellness
+user_baselines
+```
+
+### Baseline Feedback Loop
+
+```text
+Iceberg user_baselines
+    -> Baseline Publisher
+    -> Kafka user-baseline
+    -> Spark enrichment
+```
+
+The Kafka message key should be `user_id`.
+
+### Backend Serving
+
+Real-time flow:
+
+```text
+Spark
+    -> Kafka realtime-metrics
+    -> ASP.NET Core BackgroundService
+    -> SignalR
+    -> Dashboard
+```
+
+Historical flow:
+
+```text
+Dashboard
+    -> ASP.NET Core API
+    -> DuckDB.NET
+    -> Iceberg Tables
+```
+
+### Airflow Orchestration
+
+Airflow orchestrates batch workflows only. Spark Structured Streaming runs independently.
+
+Initial DAGs:
+
+```text
+System Bootstrap DAG
+Daily Baseline Recalculation DAG
+```
+
+Optional DAGs:
+
+```text
+Music Feature Extraction DAG
+Iceberg Maintenance DAG
+```
+
+---
+
+## 6. Kafka Topics
+
+| Topic              | Purpose                  | Message Key |
+|:-------------------|:-------------------------|:------------|
+| `biometrics-raw`   | Raw biometric events     | `user_id`   |
+| `biometrics-dlq`   | Invalid events           | `event_id`  |
+| `user-baseline`    | Latest baseline per user | `user_id`   |
+| `realtime-metrics` | Live metrics for backend | `user_id`   |
+| `alert-events`     | Elevated anomaly events  | `user_id`   |
+| `alert-retry`      | Notification retries     | `event_id`  |
+
+MVP topics:
+
+```text
+biometrics-raw
+biometrics-dlq
+user-baseline
+realtime-metrics
+```
+
+---
+
+## 7. Main Iceberg Tables
+
+| Table                     | Purpose                                  |
+|:--------------------------|:-----------------------------------------|
+| `user_profiles`           | User profile and default baseline data   |
+| `music_tracks`            | Music metadata and features              |
+| `raw_biometric_events`    | Validated raw events                     |
+| `scored_biometric_events` | Enriched events and calculated metrics   |
+| `daily_user_metrics`      | Daily aggregated metrics                 |
+| `user_baselines`          | Latest calculated baseline per user      |
+| `pipeline_audit`          | Batch execution and publication metadata |
+
+MVP tables:
+
+```text
+user_profiles
+music_tracks
+scored_biometric_events
+user_baselines
+```
+
+---
+
+## 8. Implementation Roadmap
+
+### Phase 1 — Infrastructure
+
+Set up Kafka, Schema Registry, MinIO, Iceberg REST Catalog, and Docker Compose.
+
+**Done when:** all core services start successfully.
+
+### Phase 2 — Base Data
+
+Create sample user profiles, music metadata, a bootstrap loader, and initial Iceberg tables.
+
+**Done when:** user and music tables can be queried from Iceberg.
+
+### Phase 3 — Kafka Producer
+
+Create the mock biometric generator, Avro schema, Kafka producer, and basic tests.
+
+**Done when:** biometric events are continuously published to `biometrics-raw`.
+
+### Phase 4 — Spark Streaming
+
+Implement Kafka input, Avro deserialization, validation, DLQ handling, deduplication, simple scoring, and checkpointing.
+
+**Done when:** Kafka events are processed continuously by Spark.
+
+### Phase 5 — Iceberg Output
+
+Create `scored_biometric_events`, configure the Spark Iceberg sink, and verify snapshots.
+
+**Done when:** processed events are queryable from Iceberg.
+
+### Phase 6 — dbt and DuckDB
+
+Create staging models, daily aggregates, user baselines, and dbt tests.
+
+**Done when:** `dbt build` succeeds and creates `user_baselines`.
+
+### Phase 7 — Baseline Feedback
+
+Create the baseline publisher, compacted Kafka topic, Spark baseline consumer, and baseline version tracking.
+
+**Done when:** Spark receives updated baselines without restarting.
+
+### Phase 8 — Backend
+
+Create the ASP.NET Core Minimal API, Kafka consumer, SignalR hub, historical endpoint, and simple dashboard.
+
+**Done when:** the dashboard displays live and historical metrics.
+
+### Phase 9 — Airflow
+
+Create the bootstrap DAG and daily baseline DAG with retries and audit logging.
+
+**Done when:** Airflow runs the full batch baseline workflow.
+
+### Phase 10 — Reliability and Documentation
+
+Add tests, DLQ demonstrations, restart tests, logging, screenshots, setup instructions, and a demo.
+
+**Done when:** another developer can understand and start the repository.
+
+---
+
+## 9. Repository Structure
+
+```text
+Music_Biometrics/
+├── infrastructure/
+│   └── docker-compose.yml
+├── data/
+│   ├── user_profiles/
+│   └── music_metadata/
+├── producer/
+├── streaming/
+├── batch/
+├── dbt/
+├── airflow/
+├── backend/
+├── dashboard/
+├── tests/
+├── docs/
+└── README.md
+```
+
+---
+
+## 10. Completion Checklist
+
+### Infrastructure
+
+- [ ] Kafka starts successfully.
+- [ ] Schema Registry is available.
+- [ ] MinIO is available.
+- [ ] Iceberg REST Catalog is available.
+
+### Data Sources
+
+- [ ] User profile sample data exists.
+- [ ] Music metadata sample data exists.
+- [ ] Biometric producer generates valid events.
+
+### Streaming
+
+- [ ] Spark reads from Kafka.
+- [ ] Spark validates records.
+- [ ] Invalid records go to the DLQ.
+- [ ] Spark checkpointing works.
+- [ ] Processed events are stored in Iceberg.
+
+### Analytics
+
+- [ ] DuckDB can query Iceberg tables.
+- [ ] dbt models run successfully.
+- [ ] dbt tests pass.
+- [ ] User baselines are generated.
+
+### Feedback Loop
+
+- [ ] Baselines are published to Kafka.
+- [ ] Spark consumes baseline updates.
+- [ ] Scored events contain a baseline version.
+
+### Serving
+
+- [ ] Backend consumes real-time metrics.
+- [ ] SignalR sends live updates.
+- [ ] Historical API returns trend data.
+
+### Orchestration
+
+- [ ] Bootstrap DAG works.
+- [ ] Daily baseline DAG works.
+- [ ] Failed tests stop baseline publication.
+- [ ] Audit metadata is stored.
+
+### Portfolio
+
+- [ ] Docker Compose setup is documented.
+- [ ] Architecture diagram matches the code.
+- [ ] Screenshots are included.
+- [ ] Demo steps are documented.
+- [ ] Limitations and future improvements are stated.
+
+---
+
+## 11. Final Target Flow
+
+```text
+User Profiles ───────────────┐
+                             ├─> Iceberg Tables on MinIO
+Music Metadata ──────────────┘
+
+Biometric Producer
+    -> Kafka
+    -> Spark Structured Streaming
+    -> Validation and Enrichment
+    -> Iceberg Tables on MinIO
+
+Iceberg
+    -> DuckDB
+    -> dbt
+    -> Daily Metrics and User Baselines
+
+User Baselines
+    -> Baseline Publisher
+    -> Kafka user-baseline
+    -> Spark Enrichment
+
+Spark
+    -> Kafka realtime-metrics
+    -> ASP.NET Core
+    -> Dashboard
+
+Airflow
+    -> Bootstrap
+    -> dbt Baseline Workflow
+    -> Baseline Publication
+    -> Optional Maintenance
+```
+
+---
+
+## 12. Future Improvements
+
+- There will be something interesting here after I finish the above section. Maybe ... ?
