@@ -29,10 +29,16 @@ The project starts with three base datasets.
 
 ### Biometric Events
 
-Simulated real-time smartwatch data.
+Simulated real-time human data.
 
 ```text
-
+event_id            -- String(UUID)
+user_id             -- String(UUID)
+timestamp           -- Long(epoch ms)
+heart_rate          -- Double
+hrv_rmssd           -- Double
+eda_microsiemens    -- Double
+motion_status       -- String
 ```
 
 ### User Profile Metadata
@@ -40,7 +46,14 @@ Simulated real-time smartwatch data.
 Static information used to enrich biometric events.
 
 ```text
-
+user_id                 -- string(UUID)
+username                -- string
+age                     -- Integer
+gender                  -- String
+cultural_region         -- String
+initial_resting_hr      -- Double
+initial_hrv_sdnn        -- Double
+created_at              -- Timestamp
 ```
 
 ### Music Metadata
@@ -48,10 +61,13 @@ Static information used to enrich biometric events.
 Static or batch-generated track information.
 
 ```text
-
+track_id            -- String
+track_title         -- String
+tempo_bpm           -- Double
+energy_rms          -- Double
+spectral_flatness   -- Double
+danceability_proxy  -- Double
 ```
-
-Music feature extraction with Librosa can be added after the core pipeline is complete.
 
 ---
 
