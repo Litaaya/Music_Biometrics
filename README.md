@@ -58,15 +58,26 @@ created_at              -- Timestamp
 
 ### Music Metadata
 
-Static or batch-generated track information.
+Static or batch-generated track information. \
+For more information: [Docs: Data Dictionary](docs/data_dictionary.md)
 
 ```text
 track_id            -- String
 track_title         -- String
+artist              -- String
+genre               -- String
+language_code       -- String
+
 tempo_bpm           -- Double
 energy_rms          -- Double
 spectral_flatness   -- Double
 danceability_proxy  -- Double
+instrumentalness    -- Double
+
+music_valence       -- Double
+lyrics_theme        -- String
+lyrics_sentiment    -- Double
+granular_mood       -- String
 ```
 
 ---
