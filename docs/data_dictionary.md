@@ -40,10 +40,38 @@
   - Example value: Escapism
 - lyrics_sentiment:
   - The emotional polarity of the lyrics text, ranging from -1.0 (highly negative/dark/sad) to 1.0 (highly positive/cheerful/bright).
-  - Example value: -0.3500
+  - Example value: -0.35
 - granular_mood:
   - The highly contextual, fine-grained emotional classification of the track. Computed from combinations of physical energy and semantic valence:
-    - Euphoric (High Energy + High Valence)
-    - Tense (High Energy + Low Valence)
-    - Peaceful (Low Energy + High Valence)
-    - Gloomy (Low Energy + Low Valence)
+    - Euphoric (High Energy + Bright Music + Positive Lyrics)
+    - Tense/Hype (High Energy + Aggressive Music / Neutral Lyrics)
+    - Bitter-Sweet / Happy-Sad (High Energy + Negative Lyrics Paradox)
+    - Peaceful (Low Energy + Bright Music / Positive Lyrics)
+    - Gloomy (Low Energy + Dark Music / Negative Lyrics)
+
+## Human profile/metadata
+
+### Schema
+
+- user_id
+- username
+
+### Demographics and Context
+
+- dob: date of birth.
+- gender: using 'M' for male and 'F' for female.
+- cultural_region: The country or cultural origin of the user standardized under the ISO 3166-1 alpha-2 standard. This allows the system to analyze cross-cultural audio perception and musical theme affinity.
+
+### Baseline Biometrics
+
+- baseline_resting_hr:
+  - The user's average baseline Resting Heart Rate (RHR) measured in Beats Per Minute (BPM) during calm states. Serves as the physiological anchor point to monitor post-audio heart rate acceleration or down-regulation.
+  - Example value: 68.5
+- baseline_hrv_sdnn:
+  - The user's baseline Heart Rate Variability (HRV) calculated via the SDNN metric (Standard Deviation of NN intervals) in milliseconds (ms). It measures autonomic nervous system balance; lower baseline values indicate higher pre-existing stress levels.
+  - Example value: 45.2
+
+### Audit metadata
+
+- created_at
+- updated_at

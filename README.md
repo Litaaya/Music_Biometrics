@@ -2,7 +2,7 @@
 
 An end-to-end data engineering project that processes simulated biometric events, enriches them with user and music metadata, stores historical data in an Apache Iceberg lakehouse, and serves real-time and historical insights through an ASP.NET Core backend.
 
-This project is designed as a Fresher Data Engineer portfolio project. The goal is to demonstrate a complete data flow using streaming, lakehouse storage, batch transformation, orchestration, data quality, and application serving.
+The goal is to demonstrate a complete data flow using streaming, lakehouse storage, batch transformation, orchestration, data quality, and application serving.
 
 ---
 
@@ -43,17 +43,19 @@ motion_status       -- String
 
 ### User Profile Metadata
 
-Static information used to enrich biometric events.
+Static information used to enrich biometric events. \
+For more information: [Docs: Data Dictionary](docs/data_dictionary.md)
 
 ```text
 user_id                 -- string(UUID)
 username                -- string
-age                     -- Integer
+dob                     -- Date
 gender                  -- String
 cultural_region         -- String
-initial_resting_hr      -- Double
-initial_hrv_sdnn        -- Double
+baseline_resting_hr     -- Double
+baseline_hrv_sdnn       -- Double
 created_at              -- Timestamp
+updated_at              -- Timestamp
 ```
 
 ### Music Metadata
