@@ -30,6 +30,7 @@ The project starts with three base datasets.
 ### Biometric Events
 
 Simulated real-time human data.
+For more information: [Docs: Data Dictionary](docs/data_dictionary.md)
 
 ```text
 event_id            -- String(UUID)
