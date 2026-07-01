@@ -397,8 +397,8 @@ Music_Biometrics/
 
 ### Data Sources
 
-- [ ] User profile sample data exists.
-- [ ] Music metadata sample data exists.
+- [x] User profile sample data exists.
+- [x] Music metadata sample data exists.
 - [ ] Biometric producer generates valid events.
 
 ### Streaming
