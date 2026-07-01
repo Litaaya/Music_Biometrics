@@ -390,10 +390,10 @@ Music_Biometrics/
 
 ### Infrastructure
 
-- [ ] Kafka starts successfully.
-- [ ] Schema Registry is available.
-- [ ] MinIO is available.
-- [ ] Iceberg REST Catalog is available.
+- [x] Kafka starts successfully.
+- [x] Schema Registry is available.
+- [x] MinIO is available.
+- [x] Iceberg REST Catalog is available.
 
 ### Data Sources
 
