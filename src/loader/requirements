@@ -1,0 +1,5 @@
+pyiceberg[pyarrow]
+pandas
+pyarrow
+boto3
+dotenv
