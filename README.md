@@ -315,7 +315,7 @@ Create sample user profiles, music metadata, a bootstrap loader, and initial Ice
 
 ### Phase 3 — Kafka Producer
 
-Create the mock biometric generator, Avro schema, Kafka producer, and basic tests.
+Create the mock biometric generator, Avro schema, Kafka producer.
 
 **Done when:** biometric events are continuously published to `biometrics-raw`.
 
