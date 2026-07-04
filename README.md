@@ -403,11 +403,11 @@ Music_Biometrics/
 
 ### Streaming
 
-- [ ] Spark reads from Kafka.
-- [ ] Spark validates records.
-- [ ] Invalid records go to the DLQ.
-- [ ] Spark checkpointing works.
-- [ ] Processed events are stored in Iceberg.
+- [x] Spark reads from Kafka.
+- [x] Spark validates records.
+- [x] Invalid records go to the DLQ.
+- [x] Spark checkpointing works.
+- [x] Processed events are stored in Iceberg.
 
 ### Analytics
 

@@ -1,72 +1,14 @@
 import os
 import sys
-import httpx
-from dotenv import load_dotenv
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, expr
 from pyspark.sql.avro.functions import from_avro
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-load_dotenv()
 
-MINIO_USER = os.getenv("MINIO_USER")
-MINIO_PASS = os.getenv("MINIO_PASS")
-CATALOG_URI = os.getenv("CATALOG_URI")
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
-SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
-TOPIC_NAME = "biometrics_stream"
-
-
-def create_streaming_spark_session():
-    print("[INFO] Building SparkSession with cloud-scale dependencies...")
-
-    spark_packages = [
-        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
-        "org.apache.spark:spark-avro_2.12:3.5.0",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0",
-        "org.apache.hadoop:hadoop-aws:3.3.4"
-    ]
-
-    builder = SparkSession.builder \
-        .appName("BiometricRealtimeIngestionWorker") \
-        .config("spark.jars.packages", ",".join(spark_packages)) \
-        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
-        .config("spark.sql.catalog.db", "org.apache.iceberg.spark.SparkCatalog") \
-        .config("spark.sql.catalog.db.catalog-impl", "org.apache.iceberg.rest.RESTCatalog") \
-        .config("spark.sql.catalog.db.uri", CATALOG_URI) \
-        .config("spark.sql.catalog.db.io-impl", "org.apache.iceberg.aws.s3.S3FileIO") \
-        .config("spark.sql.catalog.db.warehouse", "s3a://warehouse/") \
-        .config("spark.sql.catalog.db.s3.endpoint", MINIO_ENDPOINT) \
-        .config("spark.sql.catalog.db.s3.path-style-access", "true") \
-        .config("spark.sql.catalog.db.s3.access-key-id", MINIO_USER) \
-        .config("spark.sql.catalog.db.s3.secret-access-key", MINIO_PASS) \
-        .config("spark.hadoop.fs.s3a.endpoint", MINIO_ENDPOINT) \
-        .config("spark.hadoop.fs.s3a.access.key", MINIO_USER) \
-        .config("spark.hadoop.fs.s3a.secret.key", MINIO_PASS) \
-        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-
-    spark = builder.getOrCreate()
-    spark.sparkContext.setLogLevel("WARN")
-    print("[SUCCESS] SparkSession successfully created inside Docker Environment.")
-    return spark
-
-
-def fetch_latest_avro_schema(topic):
-    subject = f"{topic}-value"
-    url = f"{SCHEMA_REGISTRY_URL}/subjects/{subject}/versions/latest"
-    print(f"[INFO] Fetching latest Avro schema from Registry: {url}")
-    try:
-        response = httpx.get(url)
-        response.raise_for_status()
-        schema_json = response.json()["schema"]
-        print("[SUCCESS] Avro Schema fetched successfully.")
-        return schema_json
-    except Exception as e:
-        print(f"[CRITICAL] Failed to fetch schema from Registry: {e}", file=sys.stderr)
-        sys.exit(1)
-
+from src.ingestion.config import TOPIC_NAME, DLQ_TOPIC_NAME, KAFKA_BOOTSTRAP_SERVERS, ICEBERG_TABLE, CHECKPOINT_PATH
+from src.ingestion.spark_manager import create_streaming_spark_session, initialize_iceberg_table
+from src.ingestion.schema_registry import fetch_latest_avro_schema
+from src.ingestion.transformations import get_validation_condition, compute_stress_score
 
 def start_realtime_ingestion(spark, avro_schema_json):
     print(f"[INFO] Initializing Real-time Stream from Kafka Topic: {TOPIC_NAME}")
@@ -75,33 +17,60 @@ def start_realtime_ingestion(spark, avro_schema_json):
         .format("kafka") \
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
         .option("subscribe", TOPIC_NAME) \
-        .option("startingOffsets", "latest") \
         .load()
 
     clean_binary_stream = kafka_raw_stream.withColumn(
-        "avro_body",
-        expr("substring(value, 6, length(value) - 5)")
+        "avro_body", expr("substring(value, 6, length(value) - 5)")
     )
-
     deserialized_stream = clean_binary_stream.withColumn(
-        "biometric_data",
-        from_avro(col("avro_body"), avro_schema_json)
+        "biometric_data", from_avro(col("avro_body"), avro_schema_json)
     )
-
     final_clean_df = deserialized_stream.select("biometric_data.*")
 
-    print("[INFO] Stream Processing Pipeline is hot and ready. Outputting to Console...")
+    df_with_time = final_clean_df.withColumn(
+        "event_time", (col("timestamp") / 1000).cast("timestamp")
+    )
+    deduplicated_stream = df_with_time \
+        .withWatermark("event_time", "2 hours") \
+        .dropDuplicates(["event_id"])
 
-    query = final_clean_df.writeStream \
-        .format("console") \
-        .outputMode("append") \
-        .option("truncate", "false") \
+    def process_stream_batch(batch_df, batch_id):
+        if batch_df.count() == 0:
+            return
+
+        print(f"\n--- [PROCESSING REALTIME BATCH: {batch_id}] ---")
+
+        is_valid = get_validation_condition()
+        valid_df = batch_df.filter(is_valid)
+        invalid_df = batch_df.filter(~is_valid)
+
+        if invalid_df.count() > 0:
+            invalid_df.selectExpr("CAST(event_id AS STRING) as key", "to_json(struct(*)) as value") \
+                .write.format("kafka").option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+                .option("topic", DLQ_TOPIC_NAME).save()
+
+        if valid_df.count() > 0:
+            scored_df = compute_stress_score(valid_df)
+
+            print(f"[INFO] Data Enriched with Stress Score. Sample:")
+            scored_df.select("user_id", "heart_rate", "motion_status", "stress_score").show(5, truncate=False)
+
+            print(f"[STORAGE] Appending batch to Apache Iceberg table: {ICEBERG_TABLE}")
+            scored_df.write \
+                .format("iceberg") \
+                .mode("append") \
+                .save(ICEBERG_TABLE)
+            print(f"[SUCCESS] Batch {batch_id} committed to Lakehouse successfully.")
+
+    query = deduplicated_stream.writeStream \
+        .foreachBatch(process_stream_batch) \
+        .option("checkpointLocation", CHECKPOINT_PATH) \
         .start()
 
     query.awaitTermination()
 
-
 if __name__ == "__main__":
     spark_session = create_streaming_spark_session()
+    initialize_iceberg_table(spark_session, ICEBERG_TABLE)
     active_schema = fetch_latest_avro_schema(TOPIC_NAME)
     start_realtime_ingestion(spark_session, active_schema)
