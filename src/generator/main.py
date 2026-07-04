@@ -7,10 +7,9 @@ from dotenv import load_dotenv
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 load_dotenv()
 
-from src.ingestion.user_source import fetch_active_user_ids
-from src.ingestion.biometric_generator import simulate_user_device
-from src.ingestion.kafka_client import BiometricKafkaClient
-
+from src.generator.user_source import fetch_active_user_ids
+from src.generator.biometric_generator import simulate_user_device
+from src.generator.kafka_client import BiometricKafkaClient
 
 async def main():
     required_keys = [
@@ -47,7 +46,6 @@ async def main():
         pass
     finally:
         kafka_client.flush()
-
 
 if __name__ == "__main__":
     try:

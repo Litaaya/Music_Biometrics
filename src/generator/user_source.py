@@ -7,7 +7,6 @@ MINIO_PASS = os.getenv("MINIO_PASS")
 CATALOG_URI = os.getenv("CATALOG_URI")
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
 
-
 def fetch_active_user_ids():
     try:
         catalog = load_catalog(

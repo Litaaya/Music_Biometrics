@@ -4,7 +4,6 @@ from confluent_kafka import SerializingProducer
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroSerializer
 
-
 class BiometricKafkaClient:
     def __init__(self):
         self.bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
