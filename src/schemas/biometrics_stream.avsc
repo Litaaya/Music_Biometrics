@@ -1,0 +1,43 @@
+{
+  "type": "record",
+  "name": "BiometricEvent",
+  "namespace": "com.music_biometrics.ingestion",
+  "doc": "Schema definition for real-time streaming biometric data from user wearable devices.",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "Unique identifier for the biometric event in UUID format."
+    },
+    {
+      "name": "user_id",
+      "type": "string",
+      "doc": "Unique identifier of the target user in UUID format."
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "Event capture timestamp represented in epoch milliseconds."
+    },
+    {
+      "name": "heart_rate",
+      "type": "double",
+      "doc": "Current heart rate value."
+    },
+    {
+      "name": "hrv_rmssd",
+      "type": "double",
+      "doc": "Root mean square of successive differences for heart rate variability."
+    },
+    {
+      "name": "eda_microsiemens",
+      "type": "double",
+      "doc": "Electrodermal activity measured in microsiemens."
+    },
+    {
+      "name": "motion_status",
+      "type": "string",
+      "doc": "Current physical movement state of the user (e.g., RESTING, WALKING, RUNNING)."
+    }
+  ]
+}

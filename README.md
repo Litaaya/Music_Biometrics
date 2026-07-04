@@ -256,22 +256,22 @@ Iceberg Maintenance DAG
 
 ## 6. Kafka Topics
 
-| Topic              | Purpose                  | Message Key |
-|:-------------------|:-------------------------|:------------|
-| `biometrics-raw`   | Raw biometric events     | `user_id`   |
-| `biometrics-dlq`   | Invalid events           | `event_id`  |
-| `user-baseline`    | Latest baseline per user | `user_id`   |
-| `realtime-metrics` | Live metrics for backend | `user_id`   |
-| `alert-events`     | Elevated anomaly events  | `user_id`   |
-| `alert-retry`      | Notification retries     | `event_id`  |
+| Topic               | Purpose                  | Message Key |
+|:--------------------|:-------------------------|:------------|
+| `biometrics_stream` | Raw biometric events     | `user_id`   |
+| `biometrics_dlq`    | Invalid events           | `event_id`  |
+| `user_baseline`     | Latest baseline per user | `user_id`   |
+| `realtime_metrics`  | Live metrics for backend | `user_id`   |
+| `alert_events`      | Elevated anomaly events  | `user_id`   |
+| `alert_retry`       | Notification retries     | `event_id`  |
 
 MVP topics:
 
 ```text
-biometrics-raw
-biometrics-dlq
-user-baseline
-realtime-metrics
+biometrics_stream
+biometrics_dlq
+user_baseline
+realtime_metrics
 ```
 
 ---
@@ -399,7 +399,7 @@ Music_Biometrics/
 
 - [x] User profile sample data exists.
 - [x] Music metadata sample data exists.
-- [ ] Biometric producer generates valid events.
+- [x] Biometric producer generates valid events.
 
 ### Streaming
 
