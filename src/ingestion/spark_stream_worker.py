@@ -1,7 +1,10 @@
 import os
 import sys
+import httpx
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, expr
+from pyspark.sql.avro.functions import from_avro
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 load_dotenv()
@@ -11,6 +14,8 @@ MINIO_PASS = os.getenv("MINIO_PASS")
 CATALOG_URI = os.getenv("CATALOG_URI")
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
+TOPIC_NAME = "biometrics_stream"
 
 
 def create_streaming_spark_session():
@@ -25,10 +30,7 @@ def create_streaming_spark_session():
 
     builder = SparkSession.builder \
         .appName("BiometricRealtimeIngestionWorker") \
-        .config("spark.jars.packages", ",".join(spark_packages))
-
-    # --- ICEBERG REST CATALOG CONFIGURATIONS ---
-    builder = builder \
+        .config("spark.jars.packages", ",".join(spark_packages)) \
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
         .config("spark.sql.catalog.db", "org.apache.iceberg.spark.SparkCatalog") \
         .config("spark.sql.catalog.db.catalog-impl", "org.apache.iceberg.rest.RESTCatalog") \
@@ -38,10 +40,7 @@ def create_streaming_spark_session():
         .config("spark.sql.catalog.db.s3.endpoint", MINIO_ENDPOINT) \
         .config("spark.sql.catalog.db.s3.path-style-access", "true") \
         .config("spark.sql.catalog.db.s3.access-key-id", MINIO_USER) \
-        .config("spark.sql.catalog.db.s3.secret-access-key", MINIO_PASS)
-
-    # --- HADOOP GLOBAL S3A FILE SYSTEM CONFIGURATIONS ---
-    builder = builder \
+        .config("spark.sql.catalog.db.s3.secret-access-key", MINIO_PASS) \
         .config("spark.hadoop.fs.s3a.endpoint", MINIO_ENDPOINT) \
         .config("spark.hadoop.fs.s3a.access.key", MINIO_USER) \
         .config("spark.hadoop.fs.s3a.secret.key", MINIO_PASS) \
@@ -54,23 +53,55 @@ def create_streaming_spark_session():
     return spark
 
 
-def test_kafka_connectivity(spark):
-    print(f"[INFO] Attempting connection probe to Kafka Broker at: {KAFKA_BOOTSTRAP_SERVERS}")
+def fetch_latest_avro_schema(topic):
+    subject = f"{topic}-value"
+    url = f"{SCHEMA_REGISTRY_URL}/subjects/{subject}/versions/latest"
+    print(f"[INFO] Fetching latest Avro schema from Registry: {url}")
     try:
-        df = spark.read \
-            .format("kafka") \
-            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-            .option("subscribe", "biometrics_stream") \
-            .option("startingOffsets", "earliest") \
-            .option("endingOffsets", "latest") \
-            .load()
-
-        print(f"[SUCCESS] Connection verified! Sample schema retrieved from Kafka:")
-        df.printSchema()
+        response = httpx.get(url)
+        response.raise_for_status()
+        schema_json = response.json()["schema"]
+        print("[SUCCESS] Avro Schema fetched successfully.")
+        return schema_json
     except Exception as e:
-        print(f"[ERROR] Connection to Kafka failed: {e}", file=sys.stderr)
+        print(f"[CRITICAL] Failed to fetch schema from Registry: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def start_realtime_ingestion(spark, avro_schema_json):
+    print(f"[INFO] Initializing Real-time Stream from Kafka Topic: {TOPIC_NAME}")
+
+    kafka_raw_stream = spark.readStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+        .option("subscribe", TOPIC_NAME) \
+        .option("startingOffsets", "latest") \
+        .load()
+
+    clean_binary_stream = kafka_raw_stream.withColumn(
+        "avro_body",
+        expr("substring(value, 6, length(value) - 5)")
+    )
+
+    deserialized_stream = clean_binary_stream.withColumn(
+        "biometric_data",
+        from_avro(col("avro_body"), avro_schema_json)
+    )
+
+    final_clean_df = deserialized_stream.select("biometric_data.*")
+
+    print("[INFO] Stream Processing Pipeline is hot and ready. Outputting to Console...")
+
+    query = final_clean_df.writeStream \
+        .format("console") \
+        .outputMode("append") \
+        .option("truncate", "false") \
+        .start()
+
+    query.awaitTermination()
 
 
 if __name__ == "__main__":
     spark_session = create_streaming_spark_session()
-    test_kafka_connectivity(spark_session)
+    active_schema = fetch_latest_avro_schema(TOPIC_NAME)
+    start_realtime_ingestion(spark_session, active_schema)
