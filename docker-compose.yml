@@ -113,6 +113,19 @@ services:
     networks:
       - lakehouse_net
 
+  spark-streaming-worker:
+    build: .
+    container_name: spark-streaming-worker
+    command: python src/ingestion/spark_stream_worker.py
+    environment:
+      MINIO_USER: ${MINIO_USER}
+      MINIO_PASS: ${MINIO_PASS}
+      CATALOG_URI: http://iceberg-rest:8181
+      MINIO_ENDPOINT: http://minio:9000
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    networks:
+      - lakehouse_net
+
 volumes:
   minio_data:
   catalog_db_data:
