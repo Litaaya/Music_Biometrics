@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 load_dotenv()
 
 from src.generator.user_source import fetch_active_user_ids
+from src.generator.music_source import fetch_active_track_ids
 from src.generator.biometric_generator import simulate_user_device
 from src.generator.kafka_client import BiometricKafkaClient
 
@@ -24,9 +25,10 @@ async def main():
     print("[INFO] Constructing data plane transit routes...")
     kafka_client = BiometricKafkaClient()
 
-    print("[INFO] Syncing domain users with Iceberg Catalog metadata layers...")
+    print("[INFO] Syncing domain metadata with Iceberg Catalog layers.")
     active_users = fetch_active_user_ids()
-    print(f"[SUCCESS] Core data state matched. Active base: {len(active_users)} users.")
+    active_tracks = fetch_active_track_ids()
+    print(f"[SUCCESS] Sync completed. Active Base: {len(active_users)} users | {len(active_tracks)} tracks available in Lakehouse.")
 
     user_tasks = []
     for user_id in active_users:
@@ -36,7 +38,7 @@ async def main():
             "eda_microsiemens": random.uniform(1.0, 5.0),
             "motion_status": "RESTING"
         }
-        user_tasks.append(simulate_user_device(user_id, initial_state, kafka_client))
+        user_tasks.append(simulate_user_device(user_id, initial_state, active_tracks, kafka_client))
 
     print(f"[INFO] Activating {len(user_tasks)} device streams on event loop...")
 
