@@ -35,6 +35,7 @@ For more information: [Docs: Data Dictionary](docs/data_dictionary.md)
 ```text
 event_id            -- String(UUID)
 user_id             -- String(UUID)
+track_id            -- String
 timestamp           -- Long(epoch ms)
 heart_rate          -- Double
 hrv_rmssd           -- Double
@@ -110,20 +111,20 @@ granular_mood       -- String
 
 ```mermaid
 graph LR
-    A1["Biometric Producer"] --> B1["Kafka biometrics-stream"]
+    A1["Biometric Producer"] --> B1["Kafka biometrics_stream"]
     A2["User Profiles"] --> D1["Iceberg Tables on MinIO"]
     A3["Music Metadata"] --> D1
 
     B1 --> C1["PySpark Structured Streaming"]
     C1 --> D1
-    C1 --> B2["Kafka realtime-metrics"]
-    C1 --> B3["Kafka alert-events"]
+    C1 --> B2["Kafka realtime_metrics"]
+    C1 --> B3["Kafka alert_events"]
 
     D1 --> E1["DuckDB and dbt"]
     E1 --> D2["Analytical Tables and User Baselines"]
 
     D2 --> F1["Baseline Publisher"]
-    F1 --> B4["Kafka user-baseline"]
+    F1 --> B4["Kafka user_baseline"]
     B4 --> C1
 
     B2 --> G1["ASP.NET Core"]
@@ -155,9 +156,9 @@ Music Metadata ┘
 ```text
 Mock Smartwatch Producer
     -> Avro
-    -> Kafka biometrics-raw
+    -> Kafka biometrics_stream
     -> PySpark Structured Streaming
-    -> Validation and Enrichment
+    -> Validation, Deduplication and Enrichment
     -> Iceberg scored_biometric_events
 ```
 
@@ -168,7 +169,8 @@ Spark will:
 - Route invalid records to a DLQ.
 - Remove duplicates.
 - Process event-time windows.
-- Enrich events with user and baseline data.
+- Enrich events with user profile metadata.
+- Enrich events with music metadata when track_id is available.
 - Calculate simple deviation metrics.
 - Write valid results to Iceberg.
 
@@ -317,17 +319,17 @@ Create sample user profiles, music metadata, a bootstrap loader, and initial Ice
 
 Create the mock biometric generator, Avro schema, Kafka producer.
 
-**Done when:** biometric events are continuously published to `biometrics-raw`.
+**Done when:** biometric events are continuously published to `biometrics_stream`.
 
 ### Phase 4 — Spark Streaming
 
-Implement Kafka input, Avro deserialization, validation, DLQ handling, deduplication, simple scoring, and checkpointing.
+Implement Kafka input, Avro deserialization, validation, DLQ handling, deduplication and checkpointing.
 
 **Done when:** Kafka events are processed continuously by Spark.
 
 ### Phase 5 — Iceberg Output
 
-Create `scored_biometric_events`, configure the Spark Iceberg sink, and verify snapshots.
+Create `scored_biometric_events`, configure the Spark Iceberg sink, create enriched and scored Iceberg output.
 
 **Done when:** processed events are queryable from Iceberg.
 

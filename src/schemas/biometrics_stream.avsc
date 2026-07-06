@@ -6,38 +6,36 @@
   "fields": [
     {
       "name": "event_id",
-      "type": "string",
-      "doc": "Unique identifier for the biometric event in UUID format."
+      "type": "string"
     },
     {
       "name": "user_id",
-      "type": "string",
-      "doc": "Unique identifier of the target user in UUID format."
+      "type": "string"
+    },
+    {
+      "name": "track_id",
+      "type": ["null", "string"],
+      "default": null
     },
     {
       "name": "timestamp",
-      "type": "long",
-      "doc": "Event capture timestamp represented in epoch milliseconds."
+      "type": "long"
     },
     {
       "name": "heart_rate",
-      "type": "double",
-      "doc": "Current heart rate value."
+      "type": "double"
     },
     {
       "name": "hrv_rmssd",
-      "type": "double",
-      "doc": "Root mean square of successive differences for heart rate variability."
+      "type": "double"
     },
     {
       "name": "eda_microsiemens",
-      "type": "double",
-      "doc": "Electrodermal activity measured in microsiemens."
+      "type": "double"
     },
     {
       "name": "motion_status",
-      "type": "string",
-      "doc": "Current physical movement state of the user (e.g., RESTING, WALKING, RUNNING)."
+      "type": "string"
     }
   ]
 }
