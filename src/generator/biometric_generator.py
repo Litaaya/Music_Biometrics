@@ -3,7 +3,7 @@ import random
 import time
 import uuid
 
-async def simulate_user_device(user_id, initial_state, kafka_client):
+async def simulate_user_device(user_id, initial_state, tracks_pool, kafka_client):
     current_hr = initial_state["heart_rate"]
     current_hrv = initial_state["hrv_rmssd"]
     current_eda = initial_state["eda_microsiemens"]
@@ -11,10 +11,33 @@ async def simulate_user_device(user_id, initial_state, kafka_client):
 
     print(f"[INFO] Initialized streaming task for device user: {user_id}")
 
-    # Pre-defined professional motion states for wearable devices
+    current_track_id = None
+    track_duration_left = 0
     motion_pool = ["RESTING", "WALKING", "RUNNING", "WORKING"]
 
     while True:
+        if track_duration_left <= 0:
+            if current_track_id is None:
+                if random.random() < 0.3:
+                    current_track_id = random.choice(tracks_pool)
+                    track_duration_left = random.randint(30, 90)
+                    # print(f"[MUSIC] User {user_id} started listening to {current_track_id} for {track_duration_left}s")
+                else:
+                    track_duration_left = random.randint(10, 30)
+            else:
+                if random.random() < 0.7:
+                    old_track = current_track_id
+                    available_tracks = [t for t in tracks_pool if t != old_track]
+                    current_track_id = random.choice(available_tracks)
+                    track_duration_left = random.randint(30, 90)
+                    # print(f"[MUSIC] User {user_id} switched track from {old_track} to {current_track_id} for {track_duration_left}s")
+                else:
+                    # print(f"[MUSIC] User {user_id} stopped listening to music.")
+                    current_track_id = None
+                    track_duration_left = random.randint(20, 60)
+        else:
+            track_duration_left -= 1
+
         current_hr += random.choice([-1.0, 0.0, 1.0])
         current_hr = max(55.0, min(140.0, current_hr))
 
@@ -30,6 +53,7 @@ async def simulate_user_device(user_id, initial_state, kafka_client):
         payload = {
             "event_id": str(uuid.uuid4()),
             "user_id": user_id,
+            "track_id": current_track_id,
             "timestamp": int(time.time() * 1000),
             "heart_rate": round(current_hr, 2),
             "hrv_rmssd": round(current_hrv, 2),
