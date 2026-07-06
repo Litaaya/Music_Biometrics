@@ -110,7 +110,7 @@ granular_mood       -- String
 
 ```mermaid
 graph LR
-    A1["Biometric Producer"] --> B1["Kafka biometrics-raw"]
+    A1["Biometric Producer"] --> B1["Kafka biometrics-stream"]
     A2["User Profiles"] --> D1["Iceberg Tables on MinIO"]
     A3["Music Metadata"] --> D1
 
@@ -256,20 +256,20 @@ Iceberg Maintenance DAG
 
 ## 6. Kafka Topics
 
-| Topic               | Purpose                  | Message Key |
-|:--------------------|:-------------------------|:------------|
-| `biometrics_stream` | Raw biometric events     | `user_id`   |
-| `biometrics_dlq`    | Invalid events           | `event_id`  |
-| `user_baseline`     | Latest baseline per user | `user_id`   |
-| `realtime_metrics`  | Live metrics for backend | `user_id`   |
-| `alert_events`      | Elevated anomaly events  | `user_id`   |
-| `alert_retry`       | Notification retries     | `event_id`  |
+| Topic                   | Purpose                  | Message Key |
+|:------------------------|:-------------------------|:------------|
+| `biometrics_stream`     | Raw biometric events     | `user_id`   |
+| `biometrics_stream_dlq` | Invalid events           | `event_id`  |
+| `user_baseline`         | Latest baseline per user | `user_id`   |
+| `realtime_metrics`      | Live metrics for backend | `user_id`   |
+| `alert_events`          | Elevated anomaly events  | `user_id`   |
+| `alert_retry`           | Notification retries     | `event_id`  |
 
 MVP topics:
 
 ```text
 biometrics_stream
-biometrics_dlq
+biometrics_stream_dlq
 user_baseline
 realtime_metrics
 ```
