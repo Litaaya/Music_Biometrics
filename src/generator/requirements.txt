@@ -1,7 +1,0 @@
-confluent-kafka
-fastavro
-pyiceberg[pyarrow]
-python-dotenv
-httpsx
-authlib
-attrs

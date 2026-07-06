@@ -8,3 +8,4 @@ fastavro
 httpx
 authlib
 attrs
+cachetools

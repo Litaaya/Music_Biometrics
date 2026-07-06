@@ -2,6 +2,7 @@ services:
   minio:
     image: minio/minio:latest
     container_name: minio
+    mem_limit: 256m
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -17,6 +18,7 @@ services:
   catalog-db:
     image: postgres:16-alpine
     container_name: catalog-db
+    mem_limit: 256m
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -51,9 +53,11 @@ services:
   iceberg-rest:
     image: tabulario/iceberg-rest:0.6.0
     container_name: iceberg-rest
+    mem_limit: 384m
     ports:
       - "8181:8181"
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m"
       CATALOG_CATALOG__IMPL: org.apache.iceberg.jdbc.JdbcCatalog
       CATALOG_URI: jdbc:postgresql://catalog-db:5432/${POSTGRES_DB}
       CATALOG_JDBC_USER: ${CATALOG_JDBC_USER}
@@ -78,9 +82,11 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
+    mem_limit: 768m
     ports:
       - "9092:9092"
     environment:
+      KAFKA_HEAP_OPTS: "-Xms200m -Xmx350m"
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
@@ -102,9 +108,11 @@ services:
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.0
     container_name: schema-registry
+    mem_limit: 384m
     ports:
       - "8081:8081"
     environment:
+      SCHEMA_REGISTRY_HEAP_OPTS: "-Xms128m -Xmx256m"
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
@@ -114,17 +122,60 @@ services:
       - lakehouse_net
 
   spark-streaming-worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: spark-streaming-worker
-    command: python src/ingestion/spark_stream_worker.py
+    mem_limit: 1g
+    command: python src/ingestion/main.py
     environment:
-      MINIO_USER: ${MINIO_USER}
-      MINIO_PASS: ${MINIO_PASS}
-      CATALOG_URI: http://iceberg-rest:8181
-      MINIO_ENDPOINT: http://minio:9000
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      - SPARK_LOCAL_THREADS=2
+      - SPARK_DRIVER_MEMORY=512m
+      - SPARK_EXECUTOR_MEMORY=512m
+      - SPARK_DRIVER_MEMORY_OVERHEAD=128m
+      - SPARK_EXECUTOR_MEMORY_OVERHEAD=128m
+    env_file:
+      - .env
     networks:
       - lakehouse_net
+    depends_on:
+      - kafka
+      - schema-registry
+      - iceberg-rest
+      - minio
+    restart: unless-stopped
+
+  biometric-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: biometric-generator
+    mem_limit: 256m
+    command: python src/generator/main.py
+    env_file:
+      - .env
+    networks:
+      - lakehouse_net
+    depends_on:
+      - kafka
+      - schema-registry
+      - iceberg-rest
+      - minio
+    restart: unless-stopped
+
+  bootstrap-loader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bootstrap-loader
+    command: python src/loader/main.py
+    env_file:
+      - .env
+    networks:
+      - lakehouse_net
+    depends_on:
+      - iceberg-rest
+      - minio
 
 volumes:
   minio_data:
