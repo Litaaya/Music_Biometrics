@@ -487,3 +487,7 @@ Airflow
 ## 12. Future Improvements
 
 - There will be something interesting here after I finish the above section. Maybe ... ?
+
+## 13. Note here to remember
+
+- Make dbt to read .env file: Get-Content ../../../.env | Foreach-Object { if ($_ -match '^(.*?)=(.*)$') { Set-Item -Path "env:$($Matches[1])" -Value $Matches[2] } }
