@@ -9,3 +9,5 @@ httpx
 authlib
 attrs
 cachetools
+dbt-core
+dbt-duckdb
