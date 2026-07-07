@@ -5,10 +5,9 @@ from pyspark.sql.avro.functions import from_avro
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from src.ingestion.config import TOPIC_NAME, DLQ_TOPIC_NAME, KAFKA_BOOTSTRAP_SERVERS, ICEBERG_TABLE, CHECKPOINT_PATH
+from src.ingestion.config import TOPIC_NAME, KAFKA_BOOTSTRAP_SERVERS, ICEBERG_TABLE, CHECKPOINT_PATH
 from src.ingestion.spark_manager import create_streaming_spark_session, initialize_iceberg_table
 from src.ingestion.schema_registry import fetch_latest_avro_schema
-from src.ingestion.transformations import get_validation_condition, compute_stress_score
 
 def start_realtime_ingestion(spark, avro_schema_json):
     print(f"[INFO] Initializing Real-time Stream from Kafka Topic: {TOPIC_NAME}")
@@ -45,27 +44,12 @@ def start_realtime_ingestion(spark, avro_schema_json):
             if batch_df.count() == 0:
                 return
 
-            is_valid = get_validation_condition()
-            valid_df = batch_df.filter(is_valid)
-            invalid_df = batch_df.filter(~is_valid)
+            batch_df.write \
+                .format("iceberg") \
+                .mode("append") \
+                .save(ICEBERG_TABLE)
 
-            if invalid_df.count() > 0:
-                invalid_df.selectExpr(
-                    "CAST(event_id AS STRING) as key",
-                    "to_json(struct(*)) as value"
-                ).write.format("kafka") \
-                    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-                    .option("topic", DLQ_TOPIC_NAME) \
-                    .save()
-
-            if valid_df.count() > 0:
-                scored_df = compute_stress_score(valid_df)
-                scored_df.write \
-                    .format("iceberg") \
-                    .mode("append") \
-                    .save(ICEBERG_TABLE)
-
-                print(f"[SUCCESS] Batch {batch_id} committed to Lakehouse successfully.")
+            print(f"[SUCCESS] Batch {batch_id} raw data committed to Bronze layer successfully.")
 
         finally:
             batch_df.unpersist()

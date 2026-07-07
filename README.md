@@ -329,13 +329,13 @@ Implement Kafka input, Avro deserialization, validation, DLQ handling, deduplica
 
 ### Phase 5 — Iceberg Output
 
-Create `scored_biometric_events`, configure the Spark Iceberg sink, create enriched and scored Iceberg output.
+Create `raw_biometric_events`, configure the Spark Iceberg sink.
 
 **Done when:** processed events are queryable from Iceberg.
 
 ### Phase 6 — dbt and DuckDB
 
-Create staging models, daily aggregates, user baselines, and dbt tests.
+Create enriched and scored Iceberg output, staging models, daily aggregates, user baselines, and dbt tests.
 
 **Done when:** `dbt build` succeeds and creates `user_baselines`.
 

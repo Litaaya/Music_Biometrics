@@ -13,7 +13,7 @@ SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8
 
 TOPIC_NAME = "biometrics_stream"
 DLQ_TOPIC_NAME = "biometrics_stream_dlq"
-ICEBERG_TABLE = "lakehouse.db.scored_biometric_events"
+ICEBERG_TABLE = "lakehouse.db.raw_biometric_events"
 CHECKPOINT_PATH = "s3a://warehouse/checkpoints/biometrics_stream_worker"
 
 REQUIRED_ENV_VARS = {
