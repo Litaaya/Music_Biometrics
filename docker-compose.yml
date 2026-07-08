@@ -199,12 +199,11 @@ services:
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
       - .:/opt/airflow/dbt_project
-    command: >
+    command: |
       bash -c "
-      airflow db init &&
-      airflow users create --username \"$${AIRFLOW_ADMIN_USER}\" --firstname Quan --lastname Do --role Admin --email \"$${AIRFLOW_ADMIN_EMAIL}\" --password \"$${AIRFLOW_ADMIN_PASS}\" || true &&
-      airflow scheduler &
-      airflow webserver
+      airflow db migrate &&
+      (airflow users create --username \"$$AIRFLOW_ADMIN_USER\" --firstname Quan --lastname Do --role Admin --email \"$$AIRFLOW_ADMIN_EMAIL\" --password \"$$AIRFLOW_ADMIN_PASS\" || true) &&
+      airflow standalone
       "
     depends_on:
       - iceberg-rest
