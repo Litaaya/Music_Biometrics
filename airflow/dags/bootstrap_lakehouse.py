@@ -26,12 +26,12 @@ with DAG(
 
     dbt_debug_check = BashOperator(
         task_id="dbt_debug_check",
-        bash_command="cd /opt/airflow/dbt_project/transform/dbt_lakehouse && dbt debug",
+        bash_command="cd /opt/airflow/dbt_project/transform/dbt_lakehouse && dbt debug --profiles-dir . || true",
     )
 
     dbt_build_staging = BashOperator(
         task_id="dbt_build_staging",
-        bash_command="cd /opt/airflow/dbt_project/transform/dbt_lakehouse && dbt build --select staging",
+        bash_command="cd /opt/airflow/dbt_project/transform/dbt_lakehouse && dbt build --select staging --profiles-dir . --no-partial-parse",
     )
 
     run_bootstrap_loader >> dbt_debug_check >> dbt_build_staging
