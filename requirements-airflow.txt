@@ -1,0 +1,7 @@
+dbt-core
+dbt-duckdb
+pyiceberg[pyarrow]==0.6.0
+pandas>=2.0.0
+pyarrow
+python-dotenv
+boto3

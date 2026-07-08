@@ -35,3 +35,6 @@ down:
 
 clean:
 	$(COMPOSE) down -v
+
+lakehouse:
+	$(COMPOSE) up -d minio catalog-db minio-init iceberg-rest

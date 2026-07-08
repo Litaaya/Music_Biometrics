@@ -1,3 +1,6 @@
 FROM apache/airflow:2.9.2-python3.11
+
 USER airflow
-RUN pip install --no-cache-dir dbt-core dbt-duckdb
+
+COPY requirements-airflow.txt /requirements-airflow.txt
+RUN pip install --no-cache-dir -r /requirements-airflow.txt
