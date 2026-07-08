@@ -130,10 +130,10 @@ services:
     command: python src/ingestion/main.py
     environment:
       - SPARK_LOCAL_THREADS=2
-      - SPARK_DRIVER_MEMORY=256m
-      - SPARK_EXECUTOR_MEMORY=256m#
-      - SPARK_DRIVER_MEMORY_OVERHEAD=64m
-      - SPARK_EXECUTOR_MEMORY_OVERHEAD=64m
+      - SPARK_DRIVER_MEMORY=512m
+      - SPARK_EXECUTOR_MEMORY=512m
+      - SPARK_DRIVER_MEMORY_OVERHEAD=128m
+      - SPARK_EXECUTOR_MEMORY_OVERHEAD=128m
     env_file:
       - .env
     networks:
