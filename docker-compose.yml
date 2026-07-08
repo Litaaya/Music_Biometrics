@@ -201,7 +201,7 @@ services:
       - .:/opt/airflow/dbt_project
     command: >
       bash -c "
-      airflow db migrate &&
+      airflow db init &&
       airflow users create --username \"$${AIRFLOW_ADMIN_USER}\" --firstname Quan --lastname Do --role Admin --email \"$${AIRFLOW_ADMIN_EMAIL}\" --password \"$${AIRFLOW_ADMIN_PASS}\" || true &&
       airflow scheduler &
       airflow webserver
