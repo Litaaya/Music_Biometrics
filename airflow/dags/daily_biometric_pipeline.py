@@ -26,7 +26,7 @@ with DAG(
 
     execute_dbt_build = BashOperator(
         task_id="execute_dbt_build",
-        bash_command="cd /opt/airflow/dbt_project && dbt build",
+        bash_command="cd /opt/airflow/dbt_project/transform/dbt_lakehouse && dbt build",
     )
 
     log_pipeline_success = BashOperator(
