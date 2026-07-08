@@ -200,7 +200,7 @@ dbt models:
 stg_biometric_events
 stg_user_profiles
 stg_music_tracks
-int_daily_user_metrics
+int_biometric_enriched
 fct_daily_wellness
 user_baselines
 ```
