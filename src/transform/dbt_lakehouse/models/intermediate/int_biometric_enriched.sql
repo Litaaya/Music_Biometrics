@@ -64,6 +64,7 @@ calculated_factors as (
 select
     event_id,
     user_id,
+    username,
     track_id,
     event_timestamp_ms,
     event_time,
