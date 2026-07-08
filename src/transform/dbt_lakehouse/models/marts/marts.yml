@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: gold_daily_user_metrics
+    columns:
+      - name: daily_summary_id
+        tests:
+          - unique
+          - not_null
+      - name: date_day
+        tests:
+          - not_null
+      - name: user_id
+        tests:
+          - not_null
+      - name: avg_stress_score
+        tests:
+          - not_null
+
+  - name: gold_music_impact_metrics
+    columns:
+      - name: music_impact_id
+        tests:
+          - unique
+          - not_null
+      - name: track_id
+        tests:
+          - not_null
+      - name: music_response_category
+        tests:
+          - accepted_values:
+              values:
+                - 'LOW_STRESS_ASSOCIATED'
+                - 'MILD_STRESS_ASSOCIATED'
+                - 'MODERATE_STRESS_ASSOCIATED'
+                - 'HIGH_STRESS_ASSOCIATED'
+
+  - name: gold_user_stress_summary
+    columns:
+      - name: user_summary_id
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        tests:
+          - unique
+          - not_null
+      - name: stress_profile_category
+        tests:
+          - accepted_values:
+              values:
+                - 'HIGH_STRESS_PATTERN'
+                - 'MODERATE_STRESS_PATTERN'
+                - 'LOW_STRESS_PATTERN'
+
+  - name: user_baselines
+    columns:
+      - name: baseline_id
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        tests:
+          - unique
+          - not_null
+      - name: baseline_source
+        tests:
+          - accepted_values:
+              values:
+                - 'DYNAMIC_RESTING_EVENTS'
+                - 'STATIC_FALLBACK'
+      - name: baseline_status_category
+        tests:
+          - accepted_values:
+              values:
+                - 'SIGNIFICANT_BASELINE_SHIFT'
+                - 'MODERATE_BASELINE_SHIFT'
+                - 'STABLE_BASELINE'
