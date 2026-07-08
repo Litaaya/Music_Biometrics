@@ -1,6 +1,6 @@
 COMPOSE=docker compose
 
-.PHONY: build up infra bootstrap app worker generator down clean logs ps restart
+.PHONY: build up infra bootstrap app worker generator airflow down clean logs ps restart
 
 build:
 	$(COMPOSE) build
@@ -20,8 +20,15 @@ worker:
 generator:
 	$(COMPOSE) up -d biometric-generator
 
+airflow:
+	$(COMPOSE) up -d airflow
+
 up: build infra bootstrap app
 	@echo "Platform is running"
+
+restart:
+	$(COMPOSE) down
+	$(MAKE) up
 
 down:
 	$(COMPOSE) down

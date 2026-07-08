@@ -177,6 +177,41 @@ services:
       - iceberg-rest
       - minio
 
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow
+    mem_limit: 1g
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - DBT_PROFILES_DIR=/opt/airflow/dbt_project
+      - AIRFLOW_ADMIN_USER=${AIRFLOW_ADMIN_USER}
+      - AIRFLOW_ADMIN_PASS=${AIRFLOW_ADMIN_PASS}
+      - AIRFLOW_ADMIN_EMAIL=${AIRFLOW_ADMIN_EMAIL}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - .:/opt/airflow/dbt_project
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username \"$${AIRFLOW_ADMIN_USER}\" --firstname Quan --lastname Do --role Admin --email \"$${AIRFLOW_ADMIN_EMAIL}\" --password \"$${AIRFLOW_ADMIN_PASS}\" || true &&
+      airflow scheduler &
+      airflow webserver
+      "
+    depends_on:
+      - iceberg-rest
+      - minio
+    networks:
+      - lakehouse_net
+
 volumes:
   minio_data:
   catalog_db_data:
