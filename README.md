@@ -197,12 +197,19 @@ Iceberg Tables
 dbt models:
 
 ```text
-stg_biometric_events
-stg_user_profiles
-stg_music_tracks
-int_biometric_enriched
-fct_daily_wellness
-user_baselines
+bronze:
+- stg_biometric_events
+- stg_user_profiles
+- stg_music_tracks
+
+silver:
+- int_biometric_enriched
+
+gold:
+- gold_daily_user_metrics
+- gold_music_impact_metrics
+- gold_user_stress_summary
+- user_baselines
 ```
 
 ### Baseline Feedback Loop
