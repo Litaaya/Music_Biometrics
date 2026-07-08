@@ -21,17 +21,17 @@ with DAG(
 
     run_bootstrap_loader = BashOperator(
         task_id="run_bootstrap_loader",
-        bash_command="python /opt/airflow/dbt_project/src/loader/main.py",
+        bash_command='cd /opt/airflow/dbt_project && export PYTHONPATH=. && python src/loader/main.py',
     )
 
     dbt_debug_check = BashOperator(
         task_id="dbt_debug_check",
-        bash_command="cd /opt/airflow/dbt_project && dbt debug",
+        bash_command="cd /opt/airflow/dbt_project/transform/dbt_lakehouse && dbt debug",
     )
 
     dbt_build_staging = BashOperator(
         task_id="dbt_build_staging",
-        bash_command="cd /opt/airflow/dbt_project && dbt build --select path:models/staging",
+        bash_command="cd /opt/airflow/dbt_project/transform/dbt_lakehouse && dbt build --select staging",
     )
 
     run_bootstrap_loader >> dbt_debug_check >> dbt_build_staging
