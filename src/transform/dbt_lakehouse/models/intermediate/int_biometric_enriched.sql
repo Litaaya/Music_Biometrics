@@ -72,6 +72,9 @@ select
     gender,
     cultural_region,
 
+    baseline_resting_hr,
+    baseline_hrv_sdnn,
+
     is_listening_music,
     track_title,
     artist_name,
