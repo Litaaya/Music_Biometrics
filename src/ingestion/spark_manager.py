@@ -68,8 +68,7 @@ def initialize_iceberg_table(spark, table_name):
             hrv_rmssd DOUBLE,
             eda_microsiemens DOUBLE,
             motion_status STRING,
-            event_time TIMESTAMP,
-            stress_score STRING
+            event_time TIMESTAMP
         )
         USING iceberg
         PARTITIONED BY (days(event_time))
