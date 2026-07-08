@@ -154,6 +154,8 @@ services:
     command: python src/generator/main.py
     env_file:
       - .env
+    environment:
+      - MINIO_ENDPOINT=http://${MINIO_ENDPOINT}
     networks:
       - lakehouse_net
     depends_on:
