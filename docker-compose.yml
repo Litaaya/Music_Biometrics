@@ -194,6 +194,7 @@ services:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - DBT_PROFILES_DIR=/opt/airflow/dbt_project
       - AIRFLOW_ADMIN_USER=${AIRFLOW_ADMIN_USER}
+      - AIRFLOW__WEBSERVER__WORKERS=1
       - AIRFLOW_ADMIN_PASS=${AIRFLOW_ADMIN_PASS}
       - AIRFLOW_ADMIN_EMAIL=${AIRFLOW_ADMIN_EMAIL}
     volumes:
