@@ -412,3 +412,19 @@ Create a dashboard from Gold tables.
 - The project does not provide medical diagnosis.
 - The Power BI dashboard is planned for the next phase.
 - Backend/API serving is optional future work.
+
+---
+
+## 14. Power BI Dashboard
+
+### Near Real-Time User Stress Monitoring
+
+![Near Real-Time User Stress Monitoring](reports/powerbi/screenshots/Page_1_intraday_user_metrics.png)
+
+### Daily User Metrics
+
+![Daily User Metrics](reports/powerbi/screenshots/Page_2_daily_user_metrics.png)
+
+### Music Impact Metrics
+
+![Music Impact Metrics](reports/powerbi/screenshots/Page_3_music_impact_metrics.png)
