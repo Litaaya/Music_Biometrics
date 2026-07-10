@@ -410,7 +410,6 @@ Create a dashboard from Gold tables.
 - The biometric and music data are simulated.
 - Stress scoring is rule-based and used for data engineering demonstration only.
 - The project does not provide medical diagnosis.
-- The Power BI dashboard is planned for the next phase.
 - Backend/API serving is optional future work.
 
 ---
