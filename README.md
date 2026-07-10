@@ -400,8 +400,8 @@ Create a dashboard from Gold tables.
 
 ### BI / Serving
 
-- [ ] Power BI dashboard is built.
-- [ ] Dashboard screenshots are added to documentation.
+- [x] Power BI dashboard is built.
+- [x] Dashboard screenshots are added to documentation.
 
 ---
 
